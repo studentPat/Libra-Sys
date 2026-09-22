@@ -1,0 +1,5 @@
+# Visual Studio and local IDE state
+.vs/
+
+# Local MySQL/Workbench exports should be reviewed before committing.
+database/*.sql.bak
