@@ -6,11 +6,11 @@ CREATE ROLE IF NOT EXISTS 'librasys_report_role';
 CREATE ROLE IF NOT EXISTS 'librasys_demo_grantor_role';
 
 CREATE USER IF NOT EXISTS 'librasys_api'@'localhost'
-  IDENTIFIED BY 'LibraApi_Local_2026!';
+  IDENTIFIED BY 'REPLACE_WITH_LOCAL_SECRET';
 CREATE USER IF NOT EXISTS 'librasys_report'@'localhost'
-  IDENTIFIED BY 'LibraReport_Local_2026!';
+  IDENTIFIED BY 'REPLACE_WITH_LOCAL_SECRET';
 CREATE USER IF NOT EXISTS 'librasys_demo_grantor'@'localhost'
-  IDENTIFIED BY 'LibraGrant_Local_2026';
+  IDENTIFIED BY 'REPLACE_WITH_LOCAL_SECRET';
 
 GRANT SELECT, INSERT, UPDATE ON librasys.books TO 'librasys_api_role';
 GRANT SELECT, INSERT, UPDATE ON librasys.book_copies TO 'librasys_api_role';
