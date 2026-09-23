@@ -18,18 +18,23 @@ GRANT SELECT, INSERT, UPDATE ON librasys.reservations TO 'librasys_api_role';
 GRANT SELECT, INSERT, UPDATE ON librasys.borrowings TO 'librasys_api_role';
 GRANT SELECT, INSERT, UPDATE ON librasys.fines TO 'librasys_api_role';
 GRANT SELECT, INSERT ON librasys.payments TO 'librasys_api_role';
-GRANT SELECT ON librasys.users, librasys.members, librasys.authors,
-    librasys.book_authors, librasys.categories, librasys.book_categories
-    TO 'librasys_api_role';
+GRANT SELECT ON librasys.users TO 'librasys_api_role';
+GRANT SELECT ON librasys.members TO 'librasys_api_role';
+GRANT SELECT ON librasys.authors TO 'librasys_api_role';
+GRANT SELECT ON librasys.book_authors TO 'librasys_api_role';
+GRANT SELECT ON librasys.categories TO 'librasys_api_role';
+GRANT SELECT ON librasys.book_categories TO 'librasys_api_role';
 GRANT INSERT ON librasys.transaction_logs TO 'librasys_api_role';
 
-GRANT SELECT ON librasys.v_available_catalog, librasys.v_member_balances
-    TO 'librasys_report_role';
+GRANT SELECT ON librasys.v_available_catalog TO 'librasys_report_role';
+GRANT SELECT ON librasys.v_member_balances TO 'librasys_report_role';
 
 GRANT 'librasys_api_role' TO 'librasys_api'@'localhost';
 GRANT 'librasys_report_role' TO 'librasys_report'@'localhost';
+GRANT 'librasys_demo_grantor_role' TO 'librasys_demo_grantor'@'localhost';
 SET DEFAULT ROLE 'librasys_api_role' TO 'librasys_api'@'localhost';
 SET DEFAULT ROLE 'librasys_report_role' TO 'librasys_report'@'localhost';
+SET DEFAULT ROLE 'librasys_demo_grantor_role' TO 'librasys_demo_grantor'@'localhost';
 
 -- Course demonstration: grant-option is isolated to this demo identity.
 GRANT SELECT ON librasys.books TO 'librasys_demo_grantor_role'
