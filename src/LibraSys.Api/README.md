@@ -5,6 +5,8 @@ The first ASP.NET 8 backend slice provides:
 - `GET /api/health`
 - `GET /api/catalog?search=&page=1&pageSize=20`
 - `GET /api/catalog/{bookId}`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
 
 ## Local configuration
 
@@ -13,6 +15,7 @@ Do not commit a MySQL password or connection string. Configure the connection st
 ```powershell
 dotnet user-secrets init --project src\LibraSys.Api
 dotnet user-secrets set "Database:ConnectionString" "Server=localhost;Port=3306;Database=librasys;User ID=librasys_api;Password=YOUR_LOCAL_PASSWORD;" --project src\LibraSys.Api
+dotnet user-secrets set "Jwt:SigningKey" "GENERATE_A_LOCAL_RANDOM_KEY_WITH_AT_LEAST_32_CHARACTERS" --project src\LibraSys.Api
 ```
 
 Use the restricted `librasys_api` account from `database/03_security.sql`, not the DBA account.
@@ -25,4 +28,4 @@ dotnet run --project src\LibraSys.Api
 
 The health endpoint works without a database connection. Catalog endpoints require the validated `librasys` database and report a configuration error if no connection string is configured.
 
-Authentication and role policies will be added before member and librarian endpoints are exposed. The current public catalog slice intentionally does not expose personal or administrative data.
+The login endpoint verifies ASP.NET password hashes stored in `users.password_hash` and issues a short-lived JWT containing the application role. Do not commit the JWT key or passwords. Member and librarian business endpoints will be added next.
