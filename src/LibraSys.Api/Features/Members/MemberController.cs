@@ -88,6 +88,63 @@ public sealed class MemberController(MemberRepository repository) : ControllerBa
             : Ok(result);
     }
 
+    [HttpGet("reservations")]
+    public async Task<ActionResult<IReadOnlyList<MemberReservation>>> GetReservations(
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await repository.GetReservationsAsync(userId.Value, cancellationToken));
+    }
+
+    [HttpPost("reservations")]
+    public async Task<ActionResult<ReservationActionResult>> CreateReservation(
+        ReservationRequest request, CancellationToken cancellationToken)
+    {
+        if (request.BookId <= 0)
+        {
+            return BadRequest(new { error = "A valid book ID is required." });
+        }
+
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await repository.CreateReservationAsync(
+            userId.Value, request.BookId, cancellationToken);
+        return result is null
+            ? Conflict(new { error = "The member is inactive, the book does not exist, or a reservation is already active." })
+            : Ok(result);
+    }
+
+    [HttpDelete("reservations/{reservationId:long}")]
+    public async Task<IActionResult> CancelReservation(
+        long reservationId, CancellationToken cancellationToken)
+    {
+        if (reservationId <= 0)
+        {
+            return BadRequest(new { error = "A valid reservation ID is required." });
+        }
+
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var cancelled = await repository.CancelReservationAsync(
+            userId.Value, reservationId, cancellationToken);
+        return cancelled
+            ? NoContent()
+            : NotFound(new { error = "Active reservation not found for this member." });
+    }
+
     [HttpPut("profile")]
     public async Task<IActionResult> UpdateProfile(
         UpdateMemberProfileRequest request, CancellationToken cancellationToken)
