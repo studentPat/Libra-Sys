@@ -4,6 +4,7 @@ using LibraSys.Api.Data;
 using LibraSys.Api.Features.Auth;
 using LibraSys.Api.Features.Catalog;
 using LibraSys.Api.Features.Members;
+using LibraSys.Api.Features.Librarian;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +22,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IPasswordHasher<AuthUser>, PasswordHasher<AuthUser>>();
 builder.Services.AddScoped<CatalogRepository>();
 builder.Services.AddScoped<MemberRepository>();
+builder.Services.AddScoped<LibrarianRepository>();
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? new JwtOptions();
 if (!string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
