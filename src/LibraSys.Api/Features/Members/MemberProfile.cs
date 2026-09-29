@@ -47,3 +47,21 @@ public sealed record MemberReservation(
 public sealed record ReservationActionResult(
     long ReservationId,
     string Status);
+
+public sealed record MemberFine(
+    long FineId,
+    long BorrowingId,
+    decimal Amount,
+    string Reason,
+    string Status,
+    DateTime CreatedAt,
+    decimal PaidAmount,
+    decimal RemainingAmount);
+
+public sealed record MemberPayment(
+    long PaymentId,
+    long FineId,
+    decimal AmountPaid,
+    DateTime PaymentDate,
+    string PaymentMethod,
+    string ReceiptReference);

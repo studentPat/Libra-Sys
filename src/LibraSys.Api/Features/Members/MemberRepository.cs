@@ -422,5 +422,62 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
         }
     }
 
+    public async Task<IReadOnlyList<MemberFine>> GetFinesAsync(
+        long userId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(f.fine_id AS SIGNED) AS FineId,
+                   CAST(f.borrowing_id AS SIGNED) AS BorrowingId,
+                   f.amount AS Amount,
+                   f.reason AS Reason,
+                   f.status AS Status,
+                   f.created_at AS CreatedAt,
+                   COALESCE(SUM(p.amount_paid), 0.00) AS PaidAmount,
+                   GREATEST(f.amount - COALESCE(SUM(p.amount_paid), 0.00), 0.00)
+                       AS RemainingAmount
+            FROM fines f
+            INNER JOIN borrowings br ON br.borrowing_id = f.borrowing_id
+            INNER JOIN members m ON m.member_id = br.member_id
+            LEFT JOIN payments p ON p.fine_id = f.fine_id
+            WHERE m.user_id = @UserId
+            GROUP BY f.fine_id, f.borrowing_id, f.amount, f.reason,
+                     f.status, f.created_at
+            ORDER BY f.created_at DESC;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<MemberFine>(
+            new CommandDefinition(sql, new { UserId = userId },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<MemberPayment>> GetPaymentsAsync(
+        long userId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(p.payment_id AS SIGNED) AS PaymentId,
+                   CAST(p.fine_id AS SIGNED) AS FineId,
+                   p.amount_paid AS AmountPaid,
+                   p.payment_date AS PaymentDate,
+                   p.payment_method AS PaymentMethod,
+                   p.receipt_reference AS ReceiptReference
+            FROM payments p
+            INNER JOIN fines f ON f.fine_id = p.fine_id
+            INNER JOIN borrowings br ON br.borrowing_id = f.borrowing_id
+            INNER JOIN members m ON m.member_id = br.member_id
+            WHERE m.user_id = @UserId
+            ORDER BY p.payment_date DESC;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<MemberPayment>(
+            new CommandDefinition(sql, new { UserId = userId },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     private sealed record ReturnBorrowing(long CopyId, string Status);
 }
