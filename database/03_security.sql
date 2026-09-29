@@ -20,7 +20,7 @@ GRANT SELECT, INSERT, UPDATE ON librasys.fines TO 'librasys_api_role';
 GRANT SELECT, INSERT ON librasys.payments TO 'librasys_api_role';
 GRANT SELECT ON librasys.users TO 'librasys_api_role';
 GRANT SELECT ON librasys.roles TO 'librasys_api_role';
-GRANT SELECT ON librasys.members TO 'librasys_api_role';
+GRANT SELECT, UPDATE ON librasys.members TO 'librasys_api_role';
 GRANT SELECT ON librasys.authors TO 'librasys_api_role';
 GRANT SELECT ON librasys.book_authors TO 'librasys_api_role';
 GRANT SELECT ON librasys.categories TO 'librasys_api_role';
