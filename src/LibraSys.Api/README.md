@@ -10,6 +10,8 @@ The first ASP.NET 8 backend slice provides:
 - `GET /api/member/profile`
 - `PUT /api/member/profile`
 - `GET /api/member/borrowings`
+- `POST /api/member/borrowings`
+- `POST /api/member/borrowings/{borrowingId}/return`
 
 ## Local configuration
 
@@ -31,4 +33,4 @@ dotnet run --project src\LibraSys.Api
 
 The health endpoint works without a database connection. Catalog endpoints require the validated `librasys` database and report a configuration error if no connection string is configured.
 
-The login endpoint verifies ASP.NET password hashes stored in `users.password_hash` and issues a short-lived JWT containing the application role. Do not commit the JWT key or passwords. Member profile and borrowing-history endpoints require a Member JWT and always scope queries to the authenticated user.
+The login endpoint verifies ASP.NET password hashes stored in `users.password_hash` and issues a short-lived JWT containing the application role. Do not commit the JWT key or passwords. Member profile and borrowing-history endpoints require a Member JWT and always scope queries to the authenticated user. Borrow and return operations use explicit MySQL transactions and `SELECT ... FOR UPDATE` row locks.

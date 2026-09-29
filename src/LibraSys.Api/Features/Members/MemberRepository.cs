@@ -1,5 +1,6 @@
 using Dapper;
 using LibraSys.Api.Data;
+using MySqlConnector;
 
 namespace LibraSys.Api.Features.Members;
 
@@ -85,4 +86,178 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
             cancellationToken: cancellationToken));
         return affected > 0;
     }
+
+    public async Task<BorrowingActionResult?> BorrowAsync(
+        long userId, long copyId, CancellationToken cancellationToken)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(
+            cancellationToken);
+
+        try
+        {
+            const string memberSql = """
+                SELECT CAST(member_id AS SIGNED)
+                FROM members
+                WHERE user_id = @UserId
+                  AND member_status = 'active'
+                FOR UPDATE;
+                """;
+            var memberId = await connection.QuerySingleOrDefaultAsync<long?>(
+                new CommandDefinition(memberSql, new { UserId = userId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+            if (memberId is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string copySql = """
+                SELECT status
+                FROM book_copies
+                WHERE copy_id = @CopyId
+                FOR UPDATE;
+                """;
+            var copyStatus = await connection.QuerySingleOrDefaultAsync<string>(
+                new CommandDefinition(copySql, new { CopyId = copyId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+            if (!string.Equals(copyStatus, "available", StringComparison.Ordinal))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string insertSql = """
+                INSERT INTO borrowings (copy_id, member_id, due_date)
+                VALUES (@CopyId, @MemberId,
+                        DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 14 DAY));
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(insertSql,
+                new { CopyId = copyId, MemberId = memberId.Value },
+                transaction: transaction, cancellationToken: cancellationToken));
+            var borrowingId = await connection.ExecuteScalarAsync<long>(
+                new CommandDefinition(
+                    "SELECT CAST(LAST_INSERT_ID() AS SIGNED);",
+                    transaction: transaction, cancellationToken: cancellationToken));
+            var dueDate = await connection.ExecuteScalarAsync<DateTime>(
+                new CommandDefinition(
+                    """
+                    SELECT due_date
+                    FROM borrowings
+                    WHERE borrowing_id = @BorrowingId;
+                    """,
+                    new { BorrowingId = borrowingId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+
+            const string copyUpdateSql = """
+                UPDATE book_copies
+                SET status = 'borrowed'
+                WHERE copy_id = @CopyId;
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(copyUpdateSql,
+                new { CopyId = copyId }, transaction: transaction,
+                cancellationToken: cancellationToken));
+
+            const string logSql = """
+                INSERT INTO transaction_logs
+                    (user_id, action, entity_type, entity_id, details)
+                VALUES (@UserId, 'borrow', 'copy', @CopyId,
+                        JSON_OBJECT('borrowing_id', @BorrowingId));
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(logSql,
+                new { UserId = userId, CopyId = copyId, BorrowingId = borrowingId },
+                transaction: transaction, cancellationToken: cancellationToken));
+
+            await transaction.CommitAsync(cancellationToken);
+            return new BorrowingActionResult(
+                borrowingId,
+                dueDate,
+                "active");
+        }
+        catch (MySqlException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    public async Task<BorrowingActionResult?> ReturnAsync(
+        long userId, long borrowingId, string returnCondition,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(
+            cancellationToken);
+
+        try
+        {
+            const string borrowingSql = """
+                SELECT CAST(br.copy_id AS SIGNED) AS CopyId,
+                       br.status AS Status
+                FROM borrowings br
+                INNER JOIN members m ON m.member_id = br.member_id
+                WHERE br.borrowing_id = @BorrowingId
+                  AND m.user_id = @UserId
+                FOR UPDATE;
+                """;
+            var borrowing = await connection.QuerySingleOrDefaultAsync<ReturnBorrowing>(
+                new CommandDefinition(borrowingSql,
+                    new { BorrowingId = borrowingId, UserId = userId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+            if (borrowing is null ||
+                !string.Equals(borrowing.Status, "active", StringComparison.Ordinal))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string borrowingUpdateSql = """
+                UPDATE borrowings
+                SET status = 'returned',
+                    return_date = CURRENT_TIMESTAMP,
+                    return_condition = @ReturnCondition
+                WHERE borrowing_id = @BorrowingId;
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(borrowingUpdateSql,
+                new { BorrowingId = borrowingId, ReturnCondition = returnCondition },
+                transaction: transaction, cancellationToken: cancellationToken));
+
+            const string copyUpdateSql = """
+                UPDATE book_copies
+                SET status = 'available',
+                    item_condition = @ReturnCondition
+                WHERE copy_id = @CopyId;
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(copyUpdateSql,
+                new { CopyId = borrowing.CopyId, ReturnCondition = returnCondition },
+                transaction: transaction, cancellationToken: cancellationToken));
+
+            const string logSql = """
+                INSERT INTO transaction_logs
+                    (user_id, action, entity_type, entity_id, details)
+                VALUES (@UserId, 'return', 'borrowing', @BorrowingId,
+                        JSON_OBJECT('return_condition', @ReturnCondition));
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(logSql,
+                new
+                {
+                    UserId = userId,
+                    BorrowingId = borrowingId,
+                    ReturnCondition = returnCondition
+                },
+                transaction: transaction, cancellationToken: cancellationToken));
+
+            await transaction.CommitAsync(cancellationToken);
+            return new BorrowingActionResult(borrowingId, DateTime.UtcNow, "returned");
+        }
+        catch (MySqlException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    private sealed record ReturnBorrowing(long CopyId, string Status);
 }

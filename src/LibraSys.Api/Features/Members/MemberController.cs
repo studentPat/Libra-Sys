@@ -36,6 +36,58 @@ public sealed class MemberController(MemberRepository repository) : ControllerBa
         return Ok(await repository.GetBorrowingsAsync(userId.Value, cancellationToken));
     }
 
+    [HttpPost("borrowings")]
+    public async Task<ActionResult<BorrowingActionResult>> Borrow(
+        BorrowRequest request, CancellationToken cancellationToken)
+    {
+        if (request.CopyId <= 0)
+        {
+            return BadRequest(new { error = "A valid copy ID is required." });
+        }
+
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await repository.BorrowAsync(
+            userId.Value, request.CopyId, cancellationToken);
+        return result is null
+            ? Conflict(new { error = "The member is inactive or the copy is unavailable." })
+            : Ok(result);
+    }
+
+    [HttpPost("borrowings/{borrowingId:long}/return")]
+    public async Task<ActionResult<BorrowingActionResult>> Return(
+        long borrowingId, ReturnRequest request, CancellationToken cancellationToken)
+    {
+        var allowedConditions = new[] { "new", "good", "fair", "damaged" };
+        if (borrowingId <= 0 ||
+            !allowedConditions.Contains(request.ReturnCondition,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest(new
+            {
+                error = "A valid borrowing ID and return condition are required.",
+                allowedConditions
+            });
+        }
+
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await repository.ReturnAsync(
+            userId.Value, borrowingId, request.ReturnCondition.ToLowerInvariant(),
+            cancellationToken);
+        return result is null
+            ? NotFound(new { error = "Active borrowing not found for this member." })
+            : Ok(result);
+    }
+
     [HttpPut("profile")]
     public async Task<IActionResult> UpdateProfile(
         UpdateMemberProfileRequest request, CancellationToken cancellationToken)

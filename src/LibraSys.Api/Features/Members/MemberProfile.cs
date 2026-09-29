@@ -24,3 +24,12 @@ public sealed record UpdateMemberProfileRequest(
     string LastName,
     string Email,
     string? ContactInfo);
+
+public sealed record BorrowRequest(long CopyId);
+
+public sealed record ReturnRequest(string ReturnCondition);
+
+public sealed record BorrowingActionResult(
+    long BorrowingId,
+    DateTime DueDate,
+    string Status);
