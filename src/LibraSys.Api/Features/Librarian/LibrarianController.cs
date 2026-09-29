@@ -27,12 +27,22 @@ public sealed class LibrarianController(LibrarianRepository repository) : Contro
             return Unauthorized();
         }
 
-        var result = await repository.CreateFineAsync(
-            userId.Value, request with { Reason = request.Reason.ToLowerInvariant() },
-            cancellationToken);
-        return result is null
-            ? NotFound(new { error = "Borrowing not found." })
-            : Ok(result);
+        try
+        {
+            var result = await repository.CreateFineAsync(
+                userId.Value, request with { Reason = request.Reason.ToLowerInvariant() },
+                cancellationToken);
+            return result is null
+                ? NotFound(new { error = "Borrowing not found." })
+                : Ok(result);
+        }
+        catch (MySqlException ex) when (ex.Number == 1062)
+        {
+            return Conflict(new
+            {
+                error = "A fine with this reason already exists for the borrowing."
+            });
+        }
     }
 
     [HttpPost("payments")]
