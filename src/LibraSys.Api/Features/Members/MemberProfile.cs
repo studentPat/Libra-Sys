@@ -33,3 +33,17 @@ public sealed record BorrowingActionResult(
     long BorrowingId,
     DateTime DueDate,
     string Status);
+
+public sealed record ReservationRequest(long BookId);
+
+public sealed record MemberReservation(
+    long ReservationId,
+    long BookId,
+    string Title,
+    DateTime ReservedAt,
+    DateTime? ExpiresAt,
+    string Status);
+
+public sealed record ReservationActionResult(
+    long ReservationId,
+    string Status);

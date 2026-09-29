@@ -259,5 +259,168 @@ public sealed class MemberRepository(IDbConnectionFactory connectionFactory)
         }
     }
 
+    public async Task<IReadOnlyList<MemberReservation>> GetReservationsAsync(
+        long userId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(r.reservation_id AS SIGNED) AS ReservationId,
+                   CAST(r.book_id AS SIGNED) AS BookId,
+                   b.title AS Title,
+                   r.reserved_at AS ReservedAt,
+                   r.expires_at AS ExpiresAt,
+                   r.status AS Status
+            FROM reservations r
+            INNER JOIN members m ON m.member_id = r.member_id
+            INNER JOIN books b ON b.book_id = r.book_id
+            WHERE m.user_id = @UserId
+            ORDER BY r.reserved_at DESC;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<MemberReservation>(
+            new CommandDefinition(sql, new { UserId = userId },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
+    public async Task<ReservationActionResult?> CreateReservationAsync(
+        long userId, long bookId, CancellationToken cancellationToken)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(
+            cancellationToken);
+
+        try
+        {
+            const string memberSql = """
+                SELECT CAST(member_id AS SIGNED)
+                FROM members
+                WHERE user_id = @UserId
+                  AND member_status = 'active'
+                FOR UPDATE;
+                """;
+            var memberId = await connection.QuerySingleOrDefaultAsync<long?>(
+                new CommandDefinition(memberSql, new { UserId = userId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+            if (memberId is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string bookSql = """
+                SELECT book_id
+                FROM books
+                WHERE book_id = @BookId
+                FOR UPDATE;
+                """;
+            var existingBook = await connection.QuerySingleOrDefaultAsync<long?>(
+                new CommandDefinition(bookSql, new { BookId = bookId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+            if (existingBook is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string duplicateSql = """
+                SELECT reservation_id
+                FROM reservations
+                WHERE member_id = @MemberId
+                  AND book_id = @BookId
+                  AND status IN ('queued', 'ready')
+                FOR UPDATE;
+                """;
+            var duplicate = await connection.QuerySingleOrDefaultAsync<long?>(
+                new CommandDefinition(duplicateSql,
+                    new { MemberId = memberId.Value, BookId = bookId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+            if (duplicate is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string insertSql = """
+                INSERT INTO reservations (member_id, book_id)
+                VALUES (@MemberId, @BookId);
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(insertSql,
+                new { MemberId = memberId.Value, BookId = bookId },
+                transaction: transaction, cancellationToken: cancellationToken));
+            var reservationId = await connection.ExecuteScalarAsync<long>(
+                new CommandDefinition(
+                    "SELECT CAST(LAST_INSERT_ID() AS SIGNED);",
+                    transaction: transaction, cancellationToken: cancellationToken));
+
+            const string logSql = """
+                INSERT INTO transaction_logs
+                    (user_id, action, entity_type, entity_id, details)
+                VALUES (@UserId, 'reserve', 'book', @BookId,
+                        JSON_OBJECT('reservation_id', @ReservationId));
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(logSql,
+                new { UserId = userId, BookId = bookId, ReservationId = reservationId },
+                transaction: transaction, cancellationToken: cancellationToken));
+
+            await transaction.CommitAsync(cancellationToken);
+            return new ReservationActionResult(reservationId, "queued");
+        }
+        catch (MySqlException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    public async Task<bool> CancelReservationAsync(
+        long userId, long reservationId, CancellationToken cancellationToken)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(
+            cancellationToken);
+
+        try
+        {
+            const string updateSql = """
+                UPDATE reservations r
+                INNER JOIN members m ON m.member_id = r.member_id
+                SET r.status = 'cancelled',
+                    r.cancelled_at = CURRENT_TIMESTAMP
+                WHERE r.reservation_id = @ReservationId
+                  AND m.user_id = @UserId
+                  AND r.status IN ('queued', 'ready');
+                """;
+            var affected = await connection.ExecuteAsync(new CommandDefinition(
+                updateSql, new { UserId = userId, ReservationId = reservationId },
+                transaction: transaction, cancellationToken: cancellationToken));
+            if (affected == 0)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            const string logSql = """
+                INSERT INTO transaction_logs
+                    (user_id, action, entity_type, entity_id, details)
+                VALUES (@UserId, 'cancel_reservation', 'reservation', @ReservationId,
+                        JSON_OBJECT());
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(logSql,
+                new { UserId = userId, ReservationId = reservationId },
+                transaction: transaction, cancellationToken: cancellationToken));
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch (MySqlException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     private sealed record ReturnBorrowing(long CopyId, string Status);
 }
