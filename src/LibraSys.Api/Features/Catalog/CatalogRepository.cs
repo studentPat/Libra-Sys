@@ -10,9 +10,9 @@ public sealed class CatalogRepository(IDbConnectionFactory connectionFactory)
     {
         var offset = (page - 1) * pageSize;
         const string sql = """
-            SELECT b.book_id AS BookId, b.isbn AS Isbn, b.title AS Title,
+            SELECT CAST(b.book_id AS SIGNED) AS BookId, b.isbn AS Isbn, b.title AS Title,
                    b.publisher AS Publisher, b.publication_year AS PublicationYear,
-                   COUNT(bc.copy_id) AS AvailableCopyCount
+                   CAST(COUNT(bc.copy_id) AS SIGNED) AS AvailableCopyCount
             FROM books b
             LEFT JOIN book_copies bc
               ON bc.book_id = b.book_id AND bc.status = 'available'
@@ -35,9 +35,9 @@ public sealed class CatalogRepository(IDbConnectionFactory connectionFactory)
     public async Task<BookDetails?> GetByIdAsync(long bookId, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT b.book_id AS BookId, b.isbn AS Isbn, b.title AS Title,
+            SELECT CAST(b.book_id AS SIGNED) AS BookId, b.isbn AS Isbn, b.title AS Title,
                    b.publisher AS Publisher, b.publication_year AS PublicationYear,
-                   COUNT(DISTINCT CASE WHEN bc.status = 'available' THEN bc.copy_id END)
+                   CAST(COUNT(DISTINCT CASE WHEN bc.status = 'available' THEN bc.copy_id END) AS SIGNED)
                        AS AvailableCopyCount,
                    GROUP_CONCAT(DISTINCT a.name ORDER BY a.name SEPARATOR '|') AS AuthorNames,
                    GROUP_CONCAT(DISTINCT c.category_name ORDER BY c.category_name SEPARATOR '|')
