@@ -19,6 +19,8 @@ The first ASP.NET 8 backend slice provides:
 - `GET /api/member/payments`
 - `POST /api/librarian/fines`
 - `POST /api/librarian/payments`
+- `POST /api/librarian/catalog/books`
+- `POST /api/librarian/catalog/copies`
 
 ## Local configuration
 
@@ -40,4 +42,4 @@ dotnet run --project src\LibraSys.Api
 
 The health endpoint works without a database connection. Catalog endpoints require the validated `librasys` database and report a configuration error if no connection string is configured.
 
-The login endpoint verifies ASP.NET password hashes stored in `users.password_hash` and issues a short-lived JWT containing the application role. Do not commit the JWT key or passwords. Member profile, borrowing, reservation, fine, and payment endpoints require a Member JWT and always scope queries to the authenticated user. Borrow, return, and reservation mutations use explicit MySQL transactions and row locks. Members can view financial records but cannot modify fines or payments. Librarians can create fines and record payments through transactional endpoints.
+The login endpoint verifies ASP.NET password hashes stored in `users.password_hash` and issues a short-lived JWT containing the application role. Do not commit the JWT key or passwords. Member profile, borrowing, reservation, fine, and payment endpoints require a Member JWT and always scope queries to the authenticated user. Borrow, return, and reservation mutations use explicit MySQL transactions and row locks. Members can view financial records but cannot modify fines or payments. Librarians can create fines, record payments, add books, and add physical copies through protected transactional endpoints.

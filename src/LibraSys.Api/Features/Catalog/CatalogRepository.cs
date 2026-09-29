@@ -68,7 +68,15 @@ public sealed class CatalogRepository(IDbConnectionFactory connectionFactory)
             ? []
             : value.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private sealed record BookDetailsRow(
-        long BookId, string Isbn, string Title, string? Publisher, int? PublicationYear,
-        string? AuthorNames, string? CategoryNames, long AvailableCopyCount);
+    private sealed class BookDetailsRow
+    {
+        public long BookId { get; init; }
+        public string Isbn { get; init; } = string.Empty;
+        public string Title { get; init; } = string.Empty;
+        public string? Publisher { get; init; }
+        public int? PublicationYear { get; init; }
+        public string? AuthorNames { get; init; }
+        public string? CategoryNames { get; init; }
+        public long AvailableCopyCount { get; init; }
+    }
 }
