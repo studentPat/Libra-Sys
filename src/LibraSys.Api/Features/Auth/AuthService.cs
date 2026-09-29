@@ -22,8 +22,21 @@ public sealed class AuthService(
             return null;
         }
 
-        var verification = passwordHasher.VerifyHashedPassword(
-            user, user.PasswordHash, request.Password);
+        PasswordVerificationResult verification;
+        try
+        {
+            verification = passwordHasher.VerifyHashedPassword(
+                user, user.PasswordHash, request.Password);
+        }
+        catch (FormatException)
+        {
+            // A placeholder or corrupted database hash is treated as invalid credentials.
+            verification = PasswordVerificationResult.Failed;
+        }
+        catch (ArgumentException)
+        {
+            verification = PasswordVerificationResult.Failed;
+        }
         if (verification == PasswordVerificationResult.Failed)
         {
             return null;
