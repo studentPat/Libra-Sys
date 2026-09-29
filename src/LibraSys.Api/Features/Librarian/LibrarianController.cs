@@ -21,8 +21,14 @@ public sealed class LibrarianController(LibrarianRepository repository) : Contro
             return BadRequest(new { error = "A valid borrowing, positive amount, and fine reason are required.", reasons });
         }
 
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
         var result = await repository.CreateFineAsync(
-            GetUserId(), request with { Reason = request.Reason.ToLowerInvariant() },
+            userId.Value, request with { Reason = request.Reason.ToLowerInvariant() },
             cancellationToken);
         return result is null
             ? NotFound(new { error = "Borrowing not found." })
@@ -43,8 +49,14 @@ public sealed class LibrarianController(LibrarianRepository repository) : Contro
 
         try
         {
+            var userId = GetUserId();
+            if (userId is null)
+            {
+                return Unauthorized();
+            }
+
             var result = await repository.RecordPaymentAsync(
-                GetUserId(),
+                userId.Value,
                 request with { PaymentMethod = request.PaymentMethod.ToLowerInvariant() },
                 cancellationToken);
             return result is null
@@ -57,7 +69,10 @@ public sealed class LibrarianController(LibrarianRepository repository) : Contro
         }
     }
 
-    private long GetUserId() =>
-        long.Parse(User.FindFirstValue("sub") ?? throw new InvalidOperationException(
-            "Authenticated librarian token has no subject."));
+    private long? GetUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        return long.TryParse(value, out var userId) ? userId : null;
+    }
 }
