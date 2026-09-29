@@ -145,6 +145,32 @@ public sealed class MemberController(MemberRepository repository) : ControllerBa
             : NotFound(new { error = "Active reservation not found for this member." });
     }
 
+    [HttpGet("fines")]
+    public async Task<ActionResult<IReadOnlyList<MemberFine>>> GetFines(
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await repository.GetFinesAsync(userId.Value, cancellationToken));
+    }
+
+    [HttpGet("payments")]
+    public async Task<ActionResult<IReadOnlyList<MemberPayment>>> GetPayments(
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await repository.GetPaymentsAsync(userId.Value, cancellationToken));
+    }
+
     [HttpPut("profile")]
     public async Task<IActionResult> UpdateProfile(
         UpdateMemberProfileRequest request, CancellationToken cancellationToken)
