@@ -11,4 +11,12 @@ public sealed record AddCopyRequest(
     string AccessionNumber,
     string ItemCondition = "good");
 
+public sealed record UpdateBookRequest(
+    string Isbn,
+    string Title,
+    string? Publisher,
+    int? PublicationYear);
+
 public sealed record CatalogManagementResult(long Id, string Status);
+
+public sealed class CatalogManagementConflictException(string message) : Exception(message);
