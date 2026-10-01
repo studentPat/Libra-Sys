@@ -28,6 +28,9 @@ The first ASP.NET 8 backend slice provides:
 - `GET /api/librarian/reports/member-balances`
 - `GET /api/librarian/reports/catalog-availability?search=&page=1&pageSize=20`
 - `GET /api/librarian/reports/audit-logs?action=&entityType=&page=1&pageSize=20`
+- `POST /api/librarian/reservations/{reservationId}/ready`
+- `POST /api/librarian/reservations/{reservationId}/fulfill`
+- `POST /api/librarian/reservations/{reservationId}/expire`
 
 ## Local configuration
 
