@@ -6,6 +6,40 @@ namespace LibraSys.Api.Features.Librarian;
 
 public sealed class ReservationManagementRepository(IDbConnectionFactory connectionFactory)
 {
+    public async Task<IReadOnlyList<LibrarianReservation>> ListAsync(
+        string? status, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(r.reservation_id AS SIGNED) AS ReservationId,
+                   CAST(r.member_id AS SIGNED) AS MemberId,
+                   CONCAT(m.first_name, ' ', m.last_name) AS MemberName,
+                   CAST(r.book_id AS SIGNED) AS BookId,
+                   b.title AS Title,
+                   r.reserved_at AS ReservedAt,
+                   r.expires_at AS ExpiresAt,
+                   r.status AS Status
+            FROM reservations r
+            INNER JOIN members m ON m.member_id = r.member_id
+            INNER JOIN books b ON b.book_id = r.book_id
+            WHERE @Status IS NULL OR r.status = @Status
+            ORDER BY r.reserved_at DESC, r.reservation_id DESC
+            LIMIT @PageSize OFFSET @Offset;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<LibrarianReservation>(new CommandDefinition(
+            sql,
+            new
+            {
+                Status = string.IsNullOrWhiteSpace(status) ? null : status,
+                PageSize = pageSize,
+                Offset = (page - 1) * pageSize
+            },
+            cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     public async Task<ExpireDueReservationsResult> ExpireDueAsync(
         long actorUserId, CancellationToken cancellationToken)
     {
