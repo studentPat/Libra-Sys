@@ -10,6 +10,19 @@ namespace LibraSys.Api.Features.Librarian;
 public sealed class ReservationManagementController(
     ReservationManagementRepository repository) : ControllerBase
 {
+    [HttpPost("expire-due")]
+    public async Task<ActionResult<ExpireDueReservationsResult>> ExpireDue(
+        CancellationToken cancellationToken)
+    {
+        var actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await repository.ExpireDueAsync(actorUserId.Value, cancellationToken));
+    }
+
     [HttpPost("{reservationId:long}/ready")]
     public Task<ActionResult<ReservationManagementResult>> MarkReady(
         long reservationId, CancellationToken cancellationToken) =>
