@@ -26,6 +26,7 @@ builder.Services.AddScoped<LibrarianRepository>();
 builder.Services.AddScoped<CatalogManagementRepository>();
 builder.Services.AddScoped<MemberManagementRepository>();
 builder.Services.AddScoped<LibrarianReportsRepository>();
+builder.Services.AddScoped<ReservationManagementRepository>();
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? new JwtOptions();
 if (!string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
