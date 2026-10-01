@@ -12,4 +12,10 @@ public sealed record LibrarianMember(
 
 public sealed record UpdateMemberStatusRequest(string Status);
 
+public sealed record UpdateMemberRequest(
+    string FirstName,
+    string LastName,
+    string Email,
+    string? ContactInfo);
+
 public sealed record MemberManagementResult(long MemberId, string Status);

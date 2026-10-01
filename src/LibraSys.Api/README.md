@@ -25,6 +25,7 @@ The first ASP.NET 8 backend slice provides:
 - `POST /api/librarian/catalog/copies/{copyId}/retire`
 - `GET /api/librarian/members?search=&status=&page=1&pageSize=20`
 - `PUT /api/librarian/members/{memberId}/status`
+- `PUT /api/librarian/members/{memberId}`
 - `GET /api/librarian/reports/member-balances`
 - `GET /api/librarian/reports/catalog-availability?search=&page=1&pageSize=20`
 - `GET /api/librarian/reports/audit-logs?action=&entityType=&page=1&pageSize=20`

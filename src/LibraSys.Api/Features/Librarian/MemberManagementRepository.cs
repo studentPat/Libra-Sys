@@ -85,4 +85,57 @@ public sealed class MemberManagementRepository(IDbConnectionFactory connectionFa
             throw;
         }
     }
+
+    public async Task<MemberManagementResult?> UpdateAsync(
+        long actorUserId, long memberId, UpdateMemberRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            const string updateSql = """
+                UPDATE members
+                SET first_name = @FirstName,
+                    last_name = @LastName,
+                    email = @Email,
+                    contact_info = @ContactInfo
+                WHERE member_id = @MemberId;
+                """;
+            var affected = await connection.ExecuteAsync(new CommandDefinition(updateSql,
+                new
+                {
+                    MemberId = memberId,
+                    request.FirstName,
+                    request.LastName,
+                    request.Email,
+                    request.ContactInfo
+                },
+                transaction: transaction, cancellationToken: cancellationToken));
+            if (affected == 0)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+
+            const string logSql = """
+                INSERT INTO transaction_logs
+                    (user_id, action, entity_type, entity_id, details)
+                VALUES (@UserId, 'update_member', 'member', @MemberId,
+                        JSON_OBJECT('email', @Email));
+                """;
+            await connection.ExecuteAsync(new CommandDefinition(logSql,
+                new { UserId = actorUserId, MemberId = memberId, request.Email },
+                transaction: transaction, cancellationToken: cancellationToken));
+            await transaction.CommitAsync(cancellationToken);
+            return new MemberManagementResult(memberId, "updated");
+        }
+        catch (MySqlException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
 }

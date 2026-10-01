@@ -10,6 +10,39 @@ namespace LibraSys.Api.Features.Librarian;
 public sealed class MemberManagementController(
     MemberManagementRepository repository) : ControllerBase
 {
+    [HttpPut("{memberId:long}")]
+    public async Task<ActionResult<MemberManagementResult>> Update(
+        long memberId, UpdateMemberRequest request, CancellationToken cancellationToken)
+    {
+        if (memberId <= 0 || string.IsNullOrWhiteSpace(request.FirstName) ||
+            string.IsNullOrWhiteSpace(request.LastName) ||
+            string.IsNullOrWhiteSpace(request.Email) ||
+            request.FirstName.Length > 80 || request.LastName.Length > 80 ||
+            request.Email.Length > 255 || request.ContactInfo?.Length > 100)
+        {
+            return BadRequest(new { error = "Member name and email are required and must fit the database fields." });
+        }
+
+        var actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await repository.UpdateAsync(
+                actorUserId.Value, memberId, request, cancellationToken);
+            return result is null
+                ? NotFound(new { error = "Member not found." })
+                : Ok(result);
+        }
+        catch (MySqlConnector.MySqlException ex) when (ex.Number == 1062)
+        {
+            return Conflict(new { error = "That email address is already used by another member." });
+        }
+    }
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<LibrarianMember>>> List(
         [FromQuery] string? search, [FromQuery] string? status = null,
