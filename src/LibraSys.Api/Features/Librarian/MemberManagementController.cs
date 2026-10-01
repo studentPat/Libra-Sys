@@ -10,6 +10,22 @@ namespace LibraSys.Api.Features.Librarian;
 public sealed class MemberManagementController(
     MemberManagementRepository repository) : ControllerBase
 {
+    [HttpGet("{memberId:long}/borrowings")]
+    public async Task<ActionResult<IReadOnlyList<LibrarianMemberBorrowing>>> Borrowings(
+        long memberId, [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var statuses = new[] { "active", "returned", "lost", "cancelled" };
+        if (memberId <= 0 ||
+            (status is not null && !statuses.Contains(status, StringComparer.OrdinalIgnoreCase)))
+        {
+            return BadRequest(new { error = "Invalid member ID or borrowing status.", statuses });
+        }
+
+        return Ok(await repository.GetBorrowingsAsync(
+            memberId, status?.ToLowerInvariant(), cancellationToken));
+    }
+
     [HttpPut("{memberId:long}")]
     public async Task<ActionResult<MemberManagementResult>> Update(
         long memberId, UpdateMemberRequest request, CancellationToken cancellationToken)

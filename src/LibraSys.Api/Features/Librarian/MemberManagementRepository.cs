@@ -6,6 +6,36 @@ namespace LibraSys.Api.Features.Librarian;
 
 public sealed class MemberManagementRepository(IDbConnectionFactory connectionFactory)
 {
+    public async Task<IReadOnlyList<LibrarianMemberBorrowing>> GetBorrowingsAsync(
+        long memberId, string? status, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(br.borrowing_id AS SIGNED) AS BorrowingId,
+                   CAST(br.member_id AS SIGNED) AS MemberId,
+                   b.title AS Title,
+                   bc.accession_number AS AccessionNumber,
+                   br.borrow_date AS BorrowDate,
+                   br.due_date AS DueDate,
+                   br.return_date AS ReturnDate,
+                   br.status AS Status,
+                   br.return_condition AS ReturnCondition
+            FROM borrowings br
+            INNER JOIN book_copies bc ON bc.copy_id = br.copy_id
+            INNER JOIN books b ON b.book_id = bc.book_id
+            WHERE br.member_id = @MemberId
+              AND (@Status IS NULL OR br.status = @Status)
+            ORDER BY br.borrow_date DESC, br.borrowing_id DESC;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<LibrarianMemberBorrowing>(
+            new CommandDefinition(sql,
+                new { MemberId = memberId, Status = status },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     public async Task<IReadOnlyList<LibrarianMember>> ListAsync(
         string? search, string? status, int page, int pageSize, CancellationToken cancellationToken)
     {

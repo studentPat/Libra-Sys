@@ -19,3 +19,14 @@ public sealed record UpdateMemberRequest(
     string? ContactInfo);
 
 public sealed record MemberManagementResult(long MemberId, string Status);
+
+public sealed record LibrarianMemberBorrowing(
+    long BorrowingId,
+    long MemberId,
+    string Title,
+    string AccessionNumber,
+    DateTime BorrowDate,
+    DateTime DueDate,
+    DateTime? ReturnDate,
+    string Status,
+    string? ReturnCondition);
