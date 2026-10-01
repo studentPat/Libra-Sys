@@ -6,6 +6,58 @@ namespace LibraSys.Api.Features.Librarian;
 
 public sealed class ReservationManagementRepository(IDbConnectionFactory connectionFactory)
 {
+    public async Task<ExpireDueReservationsResult> ExpireDueAsync(
+        long actorUserId, CancellationToken cancellationToken)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            const string dueSql = """
+                SELECT CAST(reservation_id AS SIGNED)
+                FROM reservations
+                WHERE status IN ('queued', 'ready')
+                  AND expires_at IS NOT NULL
+                  AND expires_at <= CURRENT_TIMESTAMP
+                FOR UPDATE;
+                """;
+            var reservationIds = (await connection.QueryAsync<long>(new CommandDefinition(
+                dueSql, transaction: transaction, cancellationToken: cancellationToken))).AsList();
+
+            const string updateSql = """
+                UPDATE reservations
+                SET status = 'expired',
+                    expires_at = COALESCE(expires_at, CURRENT_TIMESTAMP)
+                WHERE reservation_id = @ReservationId;
+                """;
+            const string logSql = """
+                INSERT INTO transaction_logs
+                    (user_id, action, entity_type, entity_id, details)
+                VALUES (@UserId, 'expire_reservation', 'reservation', @ReservationId,
+                        JSON_OBJECT('status', 'expired', 'source', 'batch'));
+                """;
+            foreach (var reservationId in reservationIds)
+            {
+                await connection.ExecuteAsync(new CommandDefinition(updateSql,
+                    new { ReservationId = reservationId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+                await connection.ExecuteAsync(new CommandDefinition(logSql,
+                    new { UserId = actorUserId, ReservationId = reservationId },
+                    transaction: transaction, cancellationToken: cancellationToken));
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return new ExpireDueReservationsResult(reservationIds.Count);
+        }
+        catch (MySqlException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     public Task<ReservationManagementResult?> MarkReadyAsync(
         long actorUserId, long reservationId, CancellationToken cancellationToken) =>
         TransitionAsync(actorUserId, reservationId, "ready",

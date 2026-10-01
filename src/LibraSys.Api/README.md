@@ -31,6 +31,7 @@ The first ASP.NET 8 backend slice provides:
 - `POST /api/librarian/reservations/{reservationId}/ready`
 - `POST /api/librarian/reservations/{reservationId}/fulfill`
 - `POST /api/librarian/reservations/{reservationId}/expire`
+- `POST /api/librarian/reservations/expire-due`
 
 ## Local configuration
 
