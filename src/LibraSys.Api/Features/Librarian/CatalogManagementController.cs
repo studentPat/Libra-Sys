@@ -71,6 +71,60 @@ public sealed class CatalogManagementController(
         }
     }
 
+    [HttpPut("books/{bookId:long}")]
+    public async Task<ActionResult<CatalogManagementResult>> UpdateBook(
+        long bookId, UpdateBookRequest request, CancellationToken cancellationToken)
+    {
+        if (bookId <= 0 || string.IsNullOrWhiteSpace(request.Isbn) ||
+            string.IsNullOrWhiteSpace(request.Title) || request.Isbn.Length > 20 ||
+            request.Title.Length > 255 || request.PublicationYear is < 1000 or > 9999)
+        {
+            return BadRequest(new { error = "ISBN and title are required; values must fit the database fields." });
+        }
+
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await repository.UpdateBookAsync(userId.Value, bookId, request, cancellationToken);
+            return result is null ? NotFound(new { error = "Book not found." }) : Ok(result);
+        }
+        catch (MySqlException ex) when (ex.Number == 1062)
+        {
+            return Conflict(new { error = "A book with this ISBN already exists." });
+        }
+    }
+
+    [HttpPost("copies/{copyId:long}/retire")]
+    public async Task<ActionResult<CatalogManagementResult>> RetireCopy(
+        long copyId, CancellationToken cancellationToken)
+    {
+        if (copyId <= 0)
+        {
+            return BadRequest(new { error = "A valid copy ID is required." });
+        }
+
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await repository.RetireCopyAsync(userId.Value, copyId, cancellationToken);
+            return result is null ? NotFound(new { error = "Copy not found." }) : Ok(result);
+        }
+        catch (CatalogManagementConflictException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
     private long? GetUserId()
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
