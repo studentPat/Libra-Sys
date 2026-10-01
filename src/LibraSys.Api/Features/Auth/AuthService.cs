@@ -22,6 +22,11 @@ public sealed class AuthService(
             return null;
         }
 
+        if (user.LockedUntil > DateTime.UtcNow)
+        {
+            return null;
+        }
+
         PasswordVerificationResult verification;
         try
         {
@@ -39,8 +44,12 @@ public sealed class AuthService(
         }
         if (verification == PasswordVerificationResult.Failed)
         {
+            await repository.RecordFailedLoginAsync(
+                user.UserId, user.FailedLoginCount + 1, cancellationToken);
             return null;
         }
+
+        await repository.ResetFailedLoginsAsync(user.UserId, cancellationToken);
 
         var options = jwtOptions.Value;
         if (string.IsNullOrWhiteSpace(options.SigningKey) || options.SigningKey.Length < 32)
