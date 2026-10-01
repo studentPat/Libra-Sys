@@ -9,7 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace LibraSys.Api.Features.Auth;
 
 public sealed class AuthService(
-    AuthRepository repository,
+    IAuthRepository repository,
     IOptions<JwtOptions> jwtOptions,
     IPasswordHasher<AuthUser> passwordHasher)
 {

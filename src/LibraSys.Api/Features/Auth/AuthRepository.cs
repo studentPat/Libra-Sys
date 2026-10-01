@@ -3,7 +3,7 @@ using LibraSys.Api.Data;
 
 namespace LibraSys.Api.Features.Auth;
 
-public sealed class AuthRepository(IDbConnectionFactory connectionFactory)
+public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAuthRepository
 {
     public async Task<AuthUser?> FindActiveUserAsync(
         string username, CancellationToken cancellationToken)
