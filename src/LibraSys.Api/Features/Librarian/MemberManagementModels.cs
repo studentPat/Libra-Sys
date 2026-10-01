@@ -30,3 +30,21 @@ public sealed record LibrarianMemberBorrowing(
     DateTime? ReturnDate,
     string Status,
     string? ReturnCondition);
+
+public sealed record LibrarianMemberFine(
+    long FineId,
+    long BorrowingId,
+    decimal Amount,
+    string Reason,
+    string Status,
+    DateTime CreatedAt,
+    decimal PaidAmount,
+    decimal RemainingAmount);
+
+public sealed record LibrarianMemberPayment(
+    long PaymentId,
+    long FineId,
+    decimal AmountPaid,
+    DateTime PaymentDate,
+    string PaymentMethod,
+    string ReceiptReference);

@@ -10,6 +10,30 @@ namespace LibraSys.Api.Features.Librarian;
 public sealed class MemberManagementController(
     MemberManagementRepository repository) : ControllerBase
 {
+    [HttpGet("{memberId:long}/fines")]
+    public async Task<ActionResult<IReadOnlyList<LibrarianMemberFine>>> Fines(
+        long memberId, CancellationToken cancellationToken = default)
+    {
+        if (memberId <= 0)
+        {
+            return BadRequest(new { error = "A valid member ID is required." });
+        }
+
+        return Ok(await repository.GetFinesAsync(memberId, cancellationToken));
+    }
+
+    [HttpGet("{memberId:long}/payments")]
+    public async Task<ActionResult<IReadOnlyList<LibrarianMemberPayment>>> Payments(
+        long memberId, CancellationToken cancellationToken = default)
+    {
+        if (memberId <= 0)
+        {
+            return BadRequest(new { error = "A valid member ID is required." });
+        }
+
+        return Ok(await repository.GetPaymentsAsync(memberId, cancellationToken));
+    }
+
     [HttpGet("{memberId:long}/borrowings")]
     public async Task<ActionResult<IReadOnlyList<LibrarianMemberBorrowing>>> Borrowings(
         long memberId, [FromQuery] string? status = null,

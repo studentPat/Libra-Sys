@@ -6,6 +6,61 @@ namespace LibraSys.Api.Features.Librarian;
 
 public sealed class MemberManagementRepository(IDbConnectionFactory connectionFactory)
 {
+    public async Task<IReadOnlyList<LibrarianMemberFine>> GetFinesAsync(
+        long memberId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(f.fine_id AS SIGNED) AS FineId,
+                   CAST(f.borrowing_id AS SIGNED) AS BorrowingId,
+                   f.amount AS Amount,
+                   f.reason AS Reason,
+                   f.status AS Status,
+                   f.created_at AS CreatedAt,
+                   COALESCE(SUM(p.amount_paid), 0.00) AS PaidAmount,
+                   GREATEST(f.amount - COALESCE(SUM(p.amount_paid), 0.00), 0.00)
+                       AS RemainingAmount
+            FROM fines f
+            INNER JOIN borrowings br ON br.borrowing_id = f.borrowing_id
+            LEFT JOIN payments p ON p.fine_id = f.fine_id
+            WHERE br.member_id = @MemberId
+            GROUP BY f.fine_id, f.borrowing_id, f.amount, f.reason,
+                     f.status, f.created_at
+            ORDER BY f.created_at DESC, f.fine_id DESC;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<LibrarianMemberFine>(
+            new CommandDefinition(sql, new { MemberId = memberId },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<LibrarianMemberPayment>> GetPaymentsAsync(
+        long memberId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(p.payment_id AS SIGNED) AS PaymentId,
+                   CAST(p.fine_id AS SIGNED) AS FineId,
+                   p.amount_paid AS AmountPaid,
+                   p.payment_date AS PaymentDate,
+                   p.payment_method AS PaymentMethod,
+                   p.receipt_reference AS ReceiptReference
+            FROM payments p
+            INNER JOIN fines f ON f.fine_id = p.fine_id
+            INNER JOIN borrowings br ON br.borrowing_id = f.borrowing_id
+            WHERE br.member_id = @MemberId
+            ORDER BY p.payment_date DESC, p.payment_id DESC;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<LibrarianMemberPayment>(
+            new CommandDefinition(sql, new { MemberId = memberId },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     public async Task<IReadOnlyList<LibrarianMemberBorrowing>> GetBorrowingsAsync(
         long memberId, string? status, CancellationToken cancellationToken)
     {
