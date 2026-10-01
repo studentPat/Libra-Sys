@@ -10,6 +10,24 @@ namespace LibraSys.Api.Features.Librarian;
 public sealed class ReservationManagementController(
     ReservationManagementRepository repository) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<LibrarianReservation>>> List(
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var statuses = new[] { "queued", "ready", "fulfilled", "cancelled", "expired" };
+        if (page < 1 || pageSize is < 1 or > 100 ||
+            (status is not null && !statuses.Contains(status, StringComparer.OrdinalIgnoreCase)))
+        {
+            return BadRequest(new { error = "Invalid pagination or reservation status.", statuses });
+        }
+
+        return Ok(await repository.ListAsync(
+            status?.ToLowerInvariant(), page, pageSize, cancellationToken));
+    }
+
     [HttpPost("expire-due")]
     public async Task<ActionResult<ExpireDueReservationsResult>> ExpireDue(
         CancellationToken cancellationToken)
