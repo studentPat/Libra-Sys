@@ -33,6 +33,9 @@ The first ASP.NET 8 backend slice provides:
 - `POST /api/librarian/reservations/{reservationId}/expire`
 - `POST /api/librarian/reservations/expire-due`
 
+Login failures are tracked per active user. After five failed attempts, the
+account is locked for 15 minutes and successful login resets the counter.
+
 ## Local configuration
 
 Do not commit a MySQL password or connection string. Configure the connection string with user secrets:
