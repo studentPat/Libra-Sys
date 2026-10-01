@@ -29,6 +29,7 @@ The first ASP.NET 8 backend slice provides:
 - `GET /api/librarian/members/{memberId}/borrowings?status=active`
 - `GET /api/librarian/members/{memberId}/fines`
 - `GET /api/librarian/members/{memberId}/payments`
+- `GET /api/librarian/reports/monthly-borrowings?year=2026`
 - `GET /api/librarian/reports/member-balances`
 - `GET /api/librarian/reports/catalog-availability?search=&page=1&pageSize=20`
 - `GET /api/librarian/reports/audit-logs?action=&entityType=&page=1&pageSize=20`

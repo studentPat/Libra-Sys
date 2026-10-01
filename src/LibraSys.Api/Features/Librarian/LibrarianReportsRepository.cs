@@ -5,6 +5,27 @@ namespace LibraSys.Api.Features.Librarian;
 
 public sealed class LibrarianReportsRepository(IDbConnectionFactory connectionFactory)
 {
+    public async Task<IReadOnlyList<MonthlyBorrowingReport>> GetMonthlyBorrowingsAsync(
+        int year, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT MONTH(borrow_date) AS Month,
+                   COUNT(*) AS BorrowingCount
+            FROM borrowings
+            WHERE borrow_date >= MAKEDATE(@Year, 1)
+              AND borrow_date < MAKEDATE(@Year + 1, 1)
+            GROUP BY MONTH(borrow_date)
+            ORDER BY Month;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<MonthlyBorrowingReport>(
+            new CommandDefinition(sql, new { Year = year },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     public async Task<IReadOnlyList<MemberBalanceReport>> GetMemberBalancesAsync(
         int page, int pageSize, CancellationToken cancellationToken)
     {

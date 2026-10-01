@@ -9,6 +9,18 @@ namespace LibraSys.Api.Features.Librarian;
 public sealed class LibrarianReportsController(
     LibrarianReportsRepository repository) : ControllerBase
 {
+    [HttpGet("monthly-borrowings")]
+    public async Task<ActionResult<IReadOnlyList<MonthlyBorrowingReport>>> MonthlyBorrowings(
+        [FromQuery] int year, CancellationToken cancellationToken = default)
+    {
+        if (year is < 2000 or > 2100)
+        {
+            return BadRequest(new { error = "Year must be between 2000 and 2100." });
+        }
+
+        return Ok(await repository.GetMonthlyBorrowingsAsync(year, cancellationToken));
+    }
+
     [HttpGet("member-balances")]
     public async Task<ActionResult<IReadOnlyList<MemberBalanceReport>>> MemberBalances(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20,

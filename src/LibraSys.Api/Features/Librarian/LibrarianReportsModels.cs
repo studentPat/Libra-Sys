@@ -16,6 +16,10 @@ public sealed record CatalogAvailabilityReport(
     int? PublicationYear,
     long AvailableCopyCount);
 
+public sealed record MonthlyBorrowingReport(
+    int Month,
+    long BorrowingCount);
+
 public sealed record AuditLogEntry(
     long TransactionId,
     long? UserId,
