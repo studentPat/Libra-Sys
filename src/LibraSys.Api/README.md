@@ -36,6 +36,14 @@ The first ASP.NET 8 backend slice provides:
 Login failures are tracked per active user. After five failed attempts, the
 account is locked for 15 minutes and successful login resets the counter.
 
+## Automated tests
+
+Run the authentication unit tests with:
+
+```powershell
+dotnet test tests\LibraSys.Api.Tests\LibraSys.Api.Tests.csproj
+```
+
 ## Local configuration
 
 Do not commit a MySQL password or connection string. Configure the connection string with user secrets:

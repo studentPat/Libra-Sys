@@ -18,6 +18,8 @@ builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
 builder.Services.AddScoped<AuthRepository>();
+builder.Services.AddScoped<IAuthRepository>(services =>
+    services.GetRequiredService<AuthRepository>());
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IPasswordHasher<AuthUser>, PasswordHasher<AuthUser>>();
 builder.Services.AddScoped<CatalogRepository>();
