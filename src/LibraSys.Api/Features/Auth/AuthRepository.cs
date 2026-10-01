@@ -13,7 +13,7 @@ public sealed class AuthRepository(IDbConnectionFactory connectionFactory)
                    u.username AS Username,
                    u.password_hash AS PasswordHash,
                    r.role_name AS RoleName,
-                   u.failed_login_count AS FailedLoginCount,
+                   CAST(u.failed_login_count AS SIGNED) AS FailedLoginCount,
                    u.locked_until AS LockedUntil
             FROM users u
             INNER JOIN roles r ON r.role_id = u.role_id
