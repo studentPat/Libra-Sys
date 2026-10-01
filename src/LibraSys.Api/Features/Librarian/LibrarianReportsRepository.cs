@@ -5,6 +5,37 @@ namespace LibraSys.Api.Features.Librarian;
 
 public sealed class LibrarianReportsRepository(IDbConnectionFactory connectionFactory)
 {
+    public async Task<IReadOnlyList<OverdueBorrowingReport>> GetOverdueBorrowingsAsync(
+        int page, int pageSize, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT CAST(br.borrowing_id AS SIGNED) AS BorrowingId,
+                   CAST(br.member_id AS SIGNED) AS MemberId,
+                   m.first_name AS FirstName,
+                   m.last_name AS LastName,
+                   b.title AS Title,
+                   bc.accession_number AS AccessionNumber,
+                   br.due_date AS DueDate,
+                   DATEDIFF(CURRENT_DATE, br.due_date) AS DaysOverdue
+            FROM borrowings br
+            INNER JOIN members m ON m.member_id = br.member_id
+            INNER JOIN book_copies bc ON bc.copy_id = br.copy_id
+            INNER JOIN books b ON b.book_id = bc.book_id
+            WHERE br.status = 'active'
+              AND br.due_date < CURRENT_TIMESTAMP
+            ORDER BY br.due_date, br.borrowing_id
+            LIMIT @PageSize OFFSET @Offset;
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<OverdueBorrowingReport>(
+            new CommandDefinition(sql,
+                new { PageSize = pageSize, Offset = (page - 1) * pageSize },
+                cancellationToken: cancellationToken));
+        return rows.AsList();
+    }
+
     public async Task<IReadOnlyList<MonthlyBorrowingReport>> GetMonthlyBorrowingsAsync(
         int year, CancellationToken cancellationToken)
     {

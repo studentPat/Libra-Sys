@@ -20,6 +20,16 @@ public sealed record MonthlyBorrowingReport(
     int Month,
     long BorrowingCount);
 
+public sealed record OverdueBorrowingReport(
+    long BorrowingId,
+    long MemberId,
+    string FirstName,
+    string LastName,
+    string Title,
+    string AccessionNumber,
+    DateTime DueDate,
+    int DaysOverdue);
+
 public sealed record AuditLogEntry(
     long TransactionId,
     long? UserId,

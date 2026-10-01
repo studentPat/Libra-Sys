@@ -9,6 +9,20 @@ namespace LibraSys.Api.Features.Librarian;
 public sealed class LibrarianReportsController(
     LibrarianReportsRepository repository) : ControllerBase
 {
+    [HttpGet("overdue-borrowings")]
+    public async Task<ActionResult<IReadOnlyList<OverdueBorrowingReport>>> OverdueBorrowings(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (!ValidPaging(page, pageSize))
+        {
+            return BadRequest(new { error = "Page must be positive and pageSize must be between 1 and 100." });
+        }
+
+        return Ok(await repository.GetOverdueBorrowingsAsync(
+            page, pageSize, cancellationToken));
+    }
+
     [HttpGet("monthly-borrowings")]
     public async Task<ActionResult<IReadOnlyList<MonthlyBorrowingReport>>> MonthlyBorrowings(
         [FromQuery] int year, CancellationToken cancellationToken = default)
