@@ -26,6 +26,9 @@ GRANT SELECT ON librasys.book_authors TO 'librasys_api_role';
 GRANT SELECT ON librasys.categories TO 'librasys_api_role';
 GRANT SELECT ON librasys.book_categories TO 'librasys_api_role';
 GRANT INSERT ON librasys.transaction_logs TO 'librasys_api_role';
+GRANT SELECT ON librasys.transaction_logs TO 'librasys_api_role';
+GRANT SELECT ON librasys.v_available_catalog TO 'librasys_api_role';
+GRANT SELECT ON librasys.v_member_balances TO 'librasys_api_role';
 
 GRANT SELECT ON librasys.v_available_catalog TO 'librasys_report_role';
 GRANT SELECT ON librasys.v_member_balances TO 'librasys_report_role';
