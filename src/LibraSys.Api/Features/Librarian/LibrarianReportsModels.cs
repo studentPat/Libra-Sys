@@ -28,7 +28,7 @@ public sealed record OverdueBorrowingReport(
     string Title,
     string AccessionNumber,
     DateTime DueDate,
-    int DaysOverdue);
+    long DaysOverdue);
 
 public sealed record AuditLogEntry(
     long TransactionId,
