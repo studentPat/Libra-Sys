@@ -24,6 +24,7 @@ builder.Services.AddScoped<CatalogRepository>();
 builder.Services.AddScoped<MemberRepository>();
 builder.Services.AddScoped<LibrarianRepository>();
 builder.Services.AddScoped<CatalogManagementRepository>();
+builder.Services.AddScoped<MemberManagementRepository>();
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? new JwtOptions();
 if (!string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
