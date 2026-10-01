@@ -23,6 +23,8 @@ The first ASP.NET 8 backend slice provides:
 - `POST /api/librarian/catalog/copies`
 - `PUT /api/librarian/catalog/books/{bookId}`
 - `POST /api/librarian/catalog/copies/{copyId}/retire`
+- `GET /api/librarian/members?search=&status=&page=1&pageSize=20`
+- `PUT /api/librarian/members/{memberId}/status`
 
 ## Local configuration
 
